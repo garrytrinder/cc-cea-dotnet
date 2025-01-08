@@ -11,10 +11,6 @@ param botDisplayName string
 
 param botAppDomain string
 
-param modelDeploymentName string
-param modelName string
-param modelVersion string
-
 module azureBotRegistration './botRegistration/azurebot.bicep' = {
   name: 'Azure-Bot-registration'
   params: {

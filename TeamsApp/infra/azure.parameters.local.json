@@ -18,10 +18,10 @@
       "value": "${{APP_INTERNAL_NAME}}"
     },
     "modelName": {
-      "value": "gpt-4"
+      "value": "${{MODEL_NAME}}"
     },
     "modelVersion": {
-      "value": "1106-Preview"
+      "value": "${{MODEL_VERSION}}"
     }
   }
 }
