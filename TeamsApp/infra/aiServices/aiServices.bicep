@@ -48,6 +48,22 @@ resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01
   }
 }
 
+resource embeddingsDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: account
+  name: 'text-embedding-ada-002'
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'text-embedding-ada-002'
+      version: '2'
+    }
+  }
+  sku: {
+    name: 'Standard'
+    capacity: 120
+  }
+}
+
 resource search 'Microsoft.Search/searchServices@2020-08-01' = {
   name: resourceBaseName
   location: location
