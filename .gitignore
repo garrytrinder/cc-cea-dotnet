@@ -398,3 +398,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Teams Toolkit
+TeamsApp/infra/entra/build
+TeamsApp/appPackage/build
+Custom.Engine.Agent/appSettings.*

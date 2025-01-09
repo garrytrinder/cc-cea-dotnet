@@ -8,7 +8,9 @@ param modelName string
 param modelVersion string
 param modelDeploymentName string
 
-resource account 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
+param azureContentSafetySku string
+
+resource account 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: resourceBaseName
   location: location
   kind: 'OpenAI'
@@ -30,7 +32,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
 }
 
-resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
+resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: account
   name: modelDeploymentName
   properties: {
@@ -46,22 +48,21 @@ resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01
   }
 }
 
-resource searchService 'Microsoft.Search/searchServices@2024-06-01-preview' = {
+resource search 'Microsoft.Search/searchServices@2020-08-01' = {
   name: resourceBaseName
   location: location
   sku: {
     name: 'basic'
   }
   properties: {
-    hostingMode: 'default'
-    partitionCount: 1
     replicaCount: 1
-    publicNetworkAccess: 'enabled'
+    partitionCount: 1
+    hostingMode: 'default'
   }
 }
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: resourceBaseName
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: toLower(replace(resourceBaseName, '-', ''))
   location: location
   sku: {
     name: 'Standard_LRS'
@@ -72,18 +73,18 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
 }
 
-resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
+resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
   parent: storageAccount
-  name: resourceBaseName
+  name: 'default'
   properties: {
     cors: {
       corsRules: [
         {
           allowedOrigins: ['*']
-          allowedMethods: ['GET']
+          allowedMethods: ['GET', 'POST', 'PUT', 'OPTIONS']
           allowedHeaders: ['*']
           exposedHeaders: ['*']
-          maxAgeInSeconds: 3600
+          maxAgeInSeconds: 200
         }
       ]
     }
@@ -91,14 +92,13 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices@2022-09-0
 }
 
 resource contentSafetyAccount 'Microsoft.CognitiveServices/accounts@2024-06-01-preview' = {
-  name: resourceBaseName
+  name: '${resourceBaseName}-cs'
   location: location
   kind: 'ContentSafety'
   identity: {
     type: 'SystemAssigned'
   }
   properties: {
-    customSubDomainName: resourceBaseName
     networkAcls: {
       defaultAction: 'Allow'
       virtualNetworkRules: []
@@ -107,23 +107,14 @@ resource contentSafetyAccount 'Microsoft.CognitiveServices/accounts@2024-06-01-p
     publicNetworkAccess: 'Enabled'
   }
   sku: {
-    name: 'F0'
-  }
-}
-
-resource raiPolicy 'Microsoft.CognitiveServices/accounts/raiPolicies@2024-06-01-preview' = {
-  parent: contentSafetyAccount
-  name: 'ContentSafety.Default'
-  properties: {
-    mode: 'Blocking'
-    contentFilters: []
+    name: azureContentSafetySku
   }
 }
 
 output AZURE_OPENAI_ENDPOINT string = account.properties.endpoint
-output AZURE_SEARCH_ENDPOINT string = 'https://${searchService.name}.search.windows.net'
+output AZURE_SEARCH_ENDPOINT string = 'https://${search.name}.search.windows.net'
 output AZURE_CONTENT_SAFETY_ENDPOINT string = contentSafetyAccount.properties.endpoint
 
-output SECRET_AZURE_OPENAI_API_KEY string = listKeys(account.id, '2022-12-01').key1
-output SECRET_AZURE_SEARCH_KEY string = listKeys(searchService.id, '2024-06-01-preview').primaryKey
-output SECRET_AZURE_CONTENT_SAFETY_KEY string = listKeys(contentSafetyAccount.id, '2024-06-01-preview').key1
+output SECRET_AZURE_OPENAI_API_KEY string = account.listKeys().key1
+output SECRET_AZURE_SEARCH_KEY string = search.listAdminKeys().primaryKey
+output SECRET_AZURE_CONTENT_SAFETY_KEY string = contentSafetyAccount.listKeys().key1

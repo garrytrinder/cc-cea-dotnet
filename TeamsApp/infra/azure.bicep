@@ -22,9 +22,11 @@ param modelDeploymentName string
 param modelName string
 param modelVersion string
 
+param azureContentSafetySku string
+
 // create storage account for bot state
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' = {
-  name: replace(resourceBaseName, '-', '')
+  name: '${toLower(replace(resourceBaseName, '-', ''))}state'
   location: location
   sku: {
     name: 'Standard_LRS'
@@ -76,6 +78,10 @@ resource siteConfig 'Microsoft.Web/sites/config@2021-02-01' = {
     AZURE_OPENAI_DEPLOYMENT_NAME: modelDeploymentName
     AZURE_OPENAI_KEY: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=azureOpenAIKey)'
     AZURE_OPENAI_ENDPOINT: aiServices.outputs.AZURE_OPENAI_ENDPOINT
+    AZURE_SEARCH_ENDPOINT: aiServices.outputs.AZURE_SEARCH_ENDPOINT
+    AZURE_SEARCH_KEY: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=azureAISearchKey)'
+    AZURE_CONTENT_SAFETY_ENDPOINT: aiServices.outputs.AZURE_CONTENT_SAFETY_ENDPOINT
+    AZURE_CONTENT_SAFETY_KEY: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=azureContentSafetyKey)'
     AZURE_STORAGE_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${keyVault.name};SecretName=storageAccountConnectionString)'
     AZURE_STORAGE_BLOB_CONTAINER_NAME: 'state'
     APPINSIGHTS_INSTRUMENTATIONKEY: applicationInsights.properties.InstrumentationKey
@@ -137,11 +143,29 @@ resource botPassword 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
 }
 
 // add azure openai key to key vault
-resource appClientSecretVault 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
+resource azureOpenAIKey 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
   parent: keyVault
   name: 'azureOpenAIKey'
   properties: {
     value: aiServices.outputs.SECRET_AZURE_OPENAI_API_KEY
+  }
+}
+
+// add azure search key to key vault
+resource azureAISearchKey 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
+  parent: keyVault
+  name: 'azureAISearchKey'
+  properties: {
+    value: aiServices.outputs.SECRET_AZURE_SEARCH_KEY
+  }
+}
+
+// add azure content safety key to key vault
+resource azureContentSafetyKey 'Microsoft.KeyVault/vaults/secrets@2021-06-01-preview' = {
+  parent: keyVault
+  name: 'azureContentSafetyKey'
+  properties: {
+    value: aiServices.outputs.SECRET_AZURE_CONTENT_SAFETY_KEY
   }
 }
 
@@ -173,6 +197,7 @@ module aiServices './aiServices/aiServices.bicep' = {
     modelDeploymentName: modelDeploymentName
     modelName: modelName
     modelVersion: modelVersion
+    azureContentSafetySku: azureContentSafetySku
   }
 }
 
